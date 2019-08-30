@@ -2,12 +2,13 @@ package netcode
 
 import (
 	"log"
+	"math/rand"
 	"net"
 	"time"
 )
 
 const CLIENT_MAX_RECEIVE_PACKETS = 64
-const PACKET_SEND_RATE = 10.0
+const PACKET_SEND_RATE = 60.0
 const NUM_DISCONNECT_PACKETS = 10 // number of disconnect packets the client/server should send when disconnecting
 
 type Context struct {
@@ -92,6 +93,7 @@ func NewClient(connectToken *ConnectToken) *Client {
 	c.allowedPackets[ConnectionKeepAlive] = 1
 	c.allowedPackets[ConnectionPayload] = 1
 	c.allowedPackets[ConnectionDisconnect] = 1
+
 	return c
 }
 
@@ -119,6 +121,7 @@ func (c *Client) Connect() error {
 
 	c.conn = NewNetcodeConn()
 	c.conn.SetRecvHandler(c.handleNetcodeData)
+
 	if err = c.conn.Dial(c.serverAddress); err != nil {
 		return err
 	}
@@ -305,7 +308,7 @@ func (c *Client) send() error {
 		p := &KeepAlivePacket{}
 		p.ClientIndex = 0
 		p.MaxClients = 0
-		log.Printf("client[%d] sent connection keep-alive packet to server\n", c.id)
+		//log.Printf("client[%d] sent connection keep-alive packet to server [%f | %f]\n", c.id, c.lastPacketSendTime, c.time)
 		return c.sendPacket(p)
 	}
 
@@ -319,7 +322,10 @@ func (c *Client) sendPacket(packet Packet) error {
 		return err
 	}
 
-	_, err = c.conn.Write(buffer[:packet_bytes])
+	k := rand.Int31n(int32(len(c.connectToken.ServerAddrs)))
+
+	_, err = c.conn.WriteTo(buffer[:packet_bytes], &c.connectToken.ServerAddrs[k])
+
 	if err != nil {
 		log.Printf("error writing packet %s to server: %s\n", packetTypeMap[packet.GetType()], err)
 	}
@@ -349,10 +355,10 @@ func (c *Client) OnPacketData(packetData []byte, from *net.UDPAddr) {
 	var size int
 	var sequence uint64
 
-	if !addressEqual(c.serverAddress, from) {
+	/*	if !addressEqual(c.serverAddress, from) {
 		log.Printf("client[%d] unknown/old server address sent us data %s != %s\n", c.id, c.serverAddress.String(), from.String())
 		return
-	}
+	}*/
 
 	size = len(packetData)
 	timestamp := uint64(time.Now().Unix())

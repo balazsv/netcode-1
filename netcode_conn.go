@@ -96,7 +96,10 @@ func (c *NetcodeConn) Dial(address *net.UDPAddr) error {
 	}
 
 	c.closeCh = make(chan struct{})
-	c.conn, err = net.DialUDP(address.Network(), nil, address)
+
+	c.conn, err = net.ListenUDP("udp", nil)
+	//c.conn, err = net.DialUDP(address.Network(), nil, address)
+
 	if err != nil {
 		return err
 	}
