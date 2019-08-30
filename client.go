@@ -1,6 +1,7 @@
 package netcode
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -391,6 +392,7 @@ func (c *Client) processPacket(packet Packet, sequence uint64) {
 		}
 		c.challengeData = p.ChallengeTokenData
 		c.challengeSequence = p.ChallengeTokenSequence
+		fmt.Printf("entered to collection challenge state\n")
 		c.setState(StateSendingConnectionResponse)
 	case ConnectionKeepAlive:
 		p, ok := packet.(*KeepAlivePacket)
