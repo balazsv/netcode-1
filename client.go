@@ -400,7 +400,7 @@ func (c *Client) processPacket(packet Packet, sequence uint64) {
 		fmt.Printf("entered to collection challenge state\n")
 		c.setState(StateSendingConnectionResponse)
 	case ConnectionKeepAlive:
-		fmt.Printf(">>> CONNECTION KEEPALIVE\n")
+		fmt.Printf(">>> CONNECTION KEEPALIVE (%d)\n", StateSendingConnectionResponse)
 
 		p, ok := packet.(*KeepAlivePacket)
 		if !ok {
