@@ -1,7 +1,6 @@
 package netcode
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -130,7 +129,6 @@ func (c *Client) Connect() error {
 	c.context.ReadPacketKey = c.connectToken.ServerKey
 	c.context.WritePacketKey = c.connectToken.ClientKey
 
-	fmt.Printf(">>> CONNECTION  REQUEST\n")
 	c.setState(StateSendingConnectionRequest)
 	return nil
 }
@@ -378,15 +376,11 @@ func (c *Client) processPacket(packet Packet, sequence uint64) {
 	state := c.GetState()
 	switch packet.GetType() {
 	case ConnectionDenied:
-		fmt.Printf(">>> CONNECTION DENIED\n")
-
 		if state == StateSendingConnectionRequest || state == StateSendingConnectionResponse {
 			c.shouldDisconnect = true
 			c.shouldDisconnectState = StateConnectionDenied
 		}
 	case ConnectionChallenge:
-		fmt.Printf(">>> CONNECTION CHALLENGE\n")
-
 		if state != StateSendingConnectionRequest {
 			return
 		}
@@ -397,11 +391,8 @@ func (c *Client) processPacket(packet Packet, sequence uint64) {
 		}
 		c.challengeData = p.ChallengeTokenData
 		c.challengeSequence = p.ChallengeTokenSequence
-		fmt.Printf("entered to collection challenge state\n")
 		c.setState(StateSendingConnectionResponse)
 	case ConnectionKeepAlive:
-		fmt.Printf(">>> CONNECTION KEEPALIVE (%d)\n", StateSendingConnectionResponse)
-
 		p, ok := packet.(*KeepAlivePacket)
 		if !ok {
 			return
@@ -413,23 +404,18 @@ func (c *Client) processPacket(packet Packet, sequence uint64) {
 			c.setState(StateConnected)
 		}
 	case ConnectionPayload:
-		fmt.Printf(">>> CONNECTION PAYLOAD\n")
-
 		if state != StateConnected {
 			return
 		}
 
 		c.packetQueue.Push(packet)
 	case ConnectionDisconnect:
-		fmt.Printf(">>> CONNECTION DISCONNECT\n")
-
 		if state != StateConnected {
 			return
 		}
 		c.shouldDisconnect = true
 		c.shouldDisconnectState = StateDisconnected
 	default:
-		fmt.Printf(">>> CONNECTION default\n")
 		return
 	}
 	// always update last packet recv time for valid packets.
