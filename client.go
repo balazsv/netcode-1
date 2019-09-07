@@ -8,7 +8,7 @@ import (
 )
 
 const CLIENT_MAX_RECEIVE_PACKETS = 64
-const PACKET_SEND_RATE = 60.0
+const PACKET_SEND_RATE = 40.0
 const NUM_DISCONNECT_PACKETS = 10 // number of disconnect packets the client/server should send when disconnecting
 
 type Context struct {
@@ -220,6 +220,7 @@ func (c *Client) Update(t float64) {
 	switch c.GetState() {
 	case StateSendingConnectionRequest:
 		timeout := c.lastPacketRecvTime + float64(c.connectToken.TimeoutSeconds*1000)
+
 		if timeout < c.time {
 			log.Printf("client[%d] connection request timed out.\n", c.id)
 			if c.connectNextServer() {
@@ -238,6 +239,7 @@ func (c *Client) Update(t float64) {
 		}
 	case StateConnected:
 		timeout := c.lastPacketRecvTime + float64(c.connectToken.TimeoutSeconds*1000)
+
 		if timeout < c.time {
 			log.Printf("client[%d] connection timed out\n", c.id)
 			c.Disconnect(StateConnectionTimedOut, false)
