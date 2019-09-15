@@ -109,7 +109,7 @@ func (c *Client) setState(newState ClientState) {
 	c.state = newState
 }
 
-func (c *Client) Connect() error {
+func (c *Client) Connect(localPort int) error {
 	var err error
 
 	c.startTime = 0
@@ -122,7 +122,7 @@ func (c *Client) Connect() error {
 	c.conn = NewNetcodeConn()
 	c.conn.SetRecvHandler(c.handleNetcodeData)
 
-	if err = c.conn.Dial(c.serverAddress); err != nil {
+	if err = c.conn.Dial(c.serverAddress, localPort); err != nil {
 		return err
 	}
 
@@ -134,6 +134,9 @@ func (c *Client) Connect() error {
 }
 
 func (c *Client) connectNextServer() bool {
+	// TODO: implement using the local port when connecting to an alternative server
+	panic("not implemented. connecting to the next server does not propagate the local port to use")
+
 	if c.serverIndex+1 >= len(c.connectToken.ServerAddrs) {
 		return false
 	}
@@ -144,7 +147,7 @@ func (c *Client) connectNextServer() bool {
 	c.Reset()
 
 	log.Printf("client[%d] connecting to next server %s (%d/%d)\n", c.id, c.serverAddress.String(), c.serverIndex, len(c.connectToken.ServerAddrs))
-	if err := c.Connect(); err != nil {
+	if err := c.Connect(0); err != nil {
 		log.Printf("error connecting to next server: %s\n", err)
 		return false
 	}

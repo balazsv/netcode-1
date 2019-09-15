@@ -88,7 +88,7 @@ func (c *NetcodeConn) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
 }
 
-func (c *NetcodeConn) Dial(address *net.UDPAddr) error {
+func (c *NetcodeConn) Dial(address *net.UDPAddr, localPort int) error {
 	var err error
 
 	if c.recvHandlerFn == nil {
@@ -97,7 +97,7 @@ func (c *NetcodeConn) Dial(address *net.UDPAddr) error {
 
 	c.closeCh = make(chan struct{})
 
-	c.conn, err = net.ListenUDP("udp", nil)
+	c.conn, err = net.ListenUDP("udp", &net.UDPAddr{nil, localPort, ""})
 	//c.conn, err = net.DialUDP(address.Network(), nil, address)
 
 	if err != nil {
