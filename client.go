@@ -52,6 +52,7 @@ type Client struct {
 	startTime             float64
 	lastPacketSendTime    float64
 	lastPacketRecvTime    float64
+	lastKeepaliveTime	  float64
 	shouldDisconnect      bool
 	state                 ClientState
 	shouldDisconnectState ClientState
@@ -76,8 +77,9 @@ type Client struct {
 func NewClient(connectToken *ConnectToken) *Client {
 	c := &Client{connectToken: connectToken}
 
-	c.lastPacketRecvTime = -1
-	c.lastPacketSendTime = -1
+	c.lastPacketRecvTime = -1000
+	c.lastPacketSendTime = -1000
+	c.lastKeepaliveTime = -1000
 	c.packetCh = make(chan *NetcodeData, PACKET_QUEUE_SIZE)
 	c.setState(StateDisconnected)
 	c.shouldDisconnect = false
@@ -160,7 +162,7 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) Reset() {
-	c.lastPacketSendTime = c.time - 1
+	c.lastPacketSendTime = c.time - 1000
 	c.lastPacketRecvTime = c.time
 	c.shouldDisconnect = false
 	c.shouldDisconnectState = StateDisconnected
@@ -289,7 +291,7 @@ func (c *Client) SendData(payloadData []byte) error {
 
 func (c *Client) send() error {
 	// check our send rate prior to bother sending
-	if c.lastPacketSendTime+float64(1.0/PACKET_SEND_RATE) >= c.time {
+	if c.lastPacketSendTime+float64(1000.0/PACKET_SEND_RATE) >= c.time {
 		return nil
 	}
 
@@ -310,11 +312,14 @@ func (c *Client) send() error {
 		log.Printf("client[%d] sent connection response packet to server\n", c.id)
 		return c.sendPacket(p)
 	case StateConnected:
-		p := &KeepAlivePacket{}
-		p.ClientIndex = 0
-		p.MaxClients = 0
-		//log.Printf("client[%d] sent connection keep-alive packet to server [%f | %f]\n", c.id, c.lastPacketSendTime, c.time)
-		return c.sendPacket(p)
+		if c.lastKeepaliveTime + float64(1000) <= c.time {
+			p := &KeepAlivePacket{}
+			p.ClientIndex = 0
+			p.MaxClients = 0
+			//log.Printf("client[%d] sent connection keep-alive packet to server [%f | %f]\n", c.id, c.lastPacketSendTime, c.time)
+			c.lastKeepaliveTime = c.time
+			return c.sendPacket(p)
+		}
 	}
 
 	return nil
