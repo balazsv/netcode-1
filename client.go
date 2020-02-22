@@ -291,7 +291,7 @@ func (c *Client) SendData(payloadData []byte) error {
 
 func (c *Client) send() error {
 	// check our send rate prior to bother sending
-	if c.lastPacketSendTime+float64(1000.0/PACKET_SEND_RATE) >= c.time {
+	if c.lastPacketSendTime+float64(1000.0/PACKET_SEND_RATE) >= c.time && c.lastKeepaliveTime+float64(1000.0/PACKET_SEND_RATE) >= c.time{
 		return nil
 	}
 
