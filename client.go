@@ -291,10 +291,10 @@ func (c *Client) SendData(payloadData []byte) error {
 
 func (c *Client) send() error {
 	// check our send rate prior to bother sending
-/*	if c.lastPacketSendTime+float64(1000.0/PACKET_SEND_RATE) >= c.time {
+	if c.lastPacketSendTime+float64(1000.0/PACKET_SEND_RATE) >= c.time {
 		return nil
 	}
-*/
+
 	switch c.GetState() {
 	case StateSendingConnectionRequest:
 		p := &RequestPacket{}
@@ -312,14 +312,14 @@ func (c *Client) send() error {
 		log.Printf("client[%d] sent connection response packet to server\n", c.id)
 		return c.sendPacket(p)
 	case StateConnected:
-//		if c.lastKeepaliveTime + float64(1000) <= c.time {
+		if c.lastKeepaliveTime + float64(1000) <= c.time {
 			p := &KeepAlivePacket{}
 			p.ClientIndex = 0
 			p.MaxClients = 0
 			//log.Printf("client[%d] sent connection keep-alive packet to server [%f | %f]\n", c.id, c.lastPacketSendTime, c.time)
 			c.lastKeepaliveTime = c.time
 			return c.sendPacket(p)
-//		}
+		}
 	}
 
 	return nil
