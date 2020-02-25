@@ -1,6 +1,8 @@
 package netcode
 
 import (
+	"fmt"
+	"github.com/rcrowley/go-metrics"
 	"log"
 	"math/rand"
 	"net"
@@ -8,7 +10,7 @@ import (
 )
 
 const CLIENT_MAX_RECEIVE_PACKETS = 64
-const PACKET_SEND_RATE = 40.0
+const PACKET_SEND_RATE = 20.0
 const NUM_DISCONNECT_PACKETS = 10 // number of disconnect packets the client/server should send when disconnecting
 
 type Context struct {
@@ -72,9 +74,11 @@ type Client struct {
 	packetQueue      *PacketQueue
 	allowedPackets   []byte
 	packetCh         chan *NetcodeData
+
+	metricsRegistry metrics.Registry
 }
 
-func NewClient(connectToken *ConnectToken) *Client {
+func NewClient(connectToken *ConnectToken, metricsRegistry metrics.Registry) *Client {
 	c := &Client{connectToken: connectToken}
 
 	c.lastPacketRecvTime = -1000
@@ -95,6 +99,8 @@ func NewClient(connectToken *ConnectToken) *Client {
 	c.allowedPackets[ConnectionKeepAlive] = 1
 	c.allowedPackets[ConnectionPayload] = 1
 	c.allowedPackets[ConnectionDisconnect] = 1
+
+	c.metricsRegistry = metricsRegistry
 
 	return c
 }
@@ -326,9 +332,13 @@ func (c *Client) send() error {
 }
 
 func (c *Client) sendPacket(packet Packet) error {
+	getMeter(getPacketMetricsName(packet.GetType(), "info", "num_", "_send_attempt"), c.metricsRegistry).Mark(1)
+
 	buffer := make([]byte, MAX_PACKET_BYTES)
 	packet_bytes, err := packet.Write(buffer, c.connectToken.ProtocolId, c.sequence, c.context.WritePacketKey)
+
 	if err != nil {
+		getMeter(getPacketMetricsName(packet.GetType(), "error", "num_", "_send_fail"), c.metricsRegistry).Mark(1)
 		return err
 	}
 
@@ -339,8 +349,17 @@ func (c *Client) sendPacket(packet Packet) error {
 	if err != nil {
 		log.Printf("error writing packet %s to server: %s\n", packetTypeMap[packet.GetType()], err)
 	}
+
 	c.lastPacketSendTime = c.time
 	c.sequence++
+
+	if err==nil {
+		getMeter(getPacketMetricsName(packet.GetType(), "info", "num_", "_send_success"), c.metricsRegistry).Mark(1)
+	} else {
+		getMeter(getPacketMetricsName(packet.GetType(), "error", "num_", "_send_fail"), c.metricsRegistry).Mark(1)
+	}
+
+
 	return err
 }
 
@@ -375,8 +394,12 @@ func (c *Client) OnPacketData(packetData []byte, from *net.UDPAddr) {
 
 	packet := NewPacket(packetData)
 	if err = packet.Read(packetData, size, c.connectToken.ProtocolId, timestamp, c.context.ReadPacketKey, nil, c.allowedPackets, c.replayProtection); err != nil {
+		getMeter(fmt.Sprintf("udpclient:error/packet_parse_failed"), c.metricsRegistry).Mark(1)
+
 		log.Printf("error reading packet: %s\n", err)
 	}
+
+	getMeter(getPacketMetricsName(packet.GetType(), "info", "num_", "_received"), c.metricsRegistry).Mark(1)
 
 	c.processPacket(packet, sequence)
 }
